@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using KamPay.ViewModels; 
+ using KamPay.Views; 
+ using CommunityToolkit.Maui.Core; 
+using Microsoft.Extensions.Logging;
 using CommunityToolkit.Maui;
 using KamPay.Services;
-using KamPay.ViewModels;
-using KamPay.Views;
 using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls; 
-using CommunityToolkit.Maui.Core;
 
 namespace KamPay
 {
@@ -25,7 +25,12 @@ namespace KamPay
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
-               
+
+            // Pop-up servisini ve pop-up'ın kendisini kaydet
+          //  builder.Services.AddSingleton<IPopupService>(provider => new PopupService(provider));
+            builder.Services.AddTransient<TradeOfferView>(); // Pop-up'ın kendisi
+            builder.Services.AddTransient<TradeOfferViewModel>(); // Pop-up'ın ViewModel'i
+
 
             // 📧 E-posta Ayarları
             // Gerçek değerler IT'den alınmalı (örnek olarak gösteriliyor)
@@ -70,10 +75,11 @@ namespace KamPay
             builder.Services.AddSingleton<INotificationService, FirebaseNotificationService>();
 
             builder.Services.AddSingleton<ITransactionService>(sp =>
-                new FirebaseTransactionService(
-                    sp.GetRequiredService<INotificationService>(),
-                    sp.GetRequiredService<IProductService>()) 
-            );
+      new FirebaseTransactionService(
+          sp.GetRequiredService<INotificationService>(),
+          sp.GetRequiredService<IProductService>(),
+          sp.GetRequiredService<IQRCodeService>()) // IQRCodeService eklendi
+  );
 
             // ViewModels
             // builder.Services.AddSingleton<AppShellViewModel>(); // Singleton olarak ekliyoruz
@@ -95,6 +101,7 @@ namespace KamPay
             builder.Services.AddTransient<FavoritesViewModel>();
             builder.Services.AddTransient<ProfileViewModel>();
             builder.Services.AddTransient<QRCodeViewModel>();
+            builder.Services.AddTransient<QRCodeDisplayViewModel>();
             builder.Services.AddTransient<SurpriseBoxViewModel>();
             builder.Services.AddTransient<GoodDeedBoardViewModel>();
             builder.Services.AddTransient<ServiceSharingViewModel>();
@@ -113,7 +120,8 @@ namespace KamPay
             builder.Services.AddTransient<ProfilePage>();
             builder.Services.AddTransient<NotificationsPage>();
             builder.Services.AddTransient<OffersPage>();
-            builder.Services.AddTransient<TradeOfferView>();
+            builder.Services.AddTransient<QRCodeDisplayPage>();
+            builder.Services.AddTransient<QRScannerPage>();
 
 #if DEBUG
             builder.Logging.AddDebug();

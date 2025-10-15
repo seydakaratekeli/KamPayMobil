@@ -11,13 +11,15 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using KamPay.Views;
 
 namespace KamPay.ViewModels
 {
-    public partial class OffersViewModel : ObservableObject, IDisposable
+    public partial class OffersViewModel : ObservableObject, IDisposable, IQueryAttributable
     {
         private readonly ITransactionService _transactionService;
         private readonly IAuthenticationService _authService;
+        private readonly IQRCodeService _qrCodeService;
         private IDisposable _incomingOffersSubscription;
         private IDisposable _outgoingOffersSubscription;
         private readonly FirebaseClient _firebaseClient = new(Constants.FirebaseRealtimeDbUrl);
@@ -34,10 +36,11 @@ namespace KamPay.ViewModels
         [ObservableProperty]
         private bool isOutgoingSelected = false;
 
-        public OffersViewModel(ITransactionService transactionService, IAuthenticationService authService)
+        public OffersViewModel(ITransactionService transactionService, IAuthenticationService authService, IQRCodeService qrCodeService)
         {
             _transactionService = transactionService;
             _authService = authService;
+            _qrCodeService = qrCodeService;
             StartListeningForOffers();
         }
 
@@ -152,7 +155,70 @@ namespace KamPay.ViewModels
                 await Application.Current.MainPage.DisplayAlert("Hata", result.Message, "Tamam");
             }
         }
+        // YENİ: QRScannerPage'den gelen sonucu yakalamak için
+        public void ApplyQueryAttributes(IDictionary<string, object> query)
+        {
+            if (query.ContainsKey("ScanResult"))
+            {
+                string scannedData = query["ScanResult"].ToString();
+                ProcessScannedCode(scannedData);
+            }
+        }
+        // YENİ: Taranan kodu işleyen metot
+        private async void ProcessScannedCode(string qrCodeData)
+        {
+            IsLoading = true;
+            var validateResult = await _qrCodeService.ValidateQRCodeAsync(qrCodeData);
+            if (!validateResult.Success)
+            {
+                await Application.Current.MainPage.DisplayAlert("Geçersiz Kod", validateResult.Message, "Tamam");
+                IsLoading = false;
+                return;
+            }
 
+            var confirm = await Application.Current.MainPage.DisplayAlert("Teslimatı Onayla", "Bu ürünün teslimatını aldığınızı onaylıyor musunuz? Bu işlem geri alınamaz.", "Evet, Onayla", "Hayır");
+            if (confirm)
+            {
+                var completeResult = await _qrCodeService.CompleteDeliveryAsync(validateResult.Data.QRCodeId);
+                if (completeResult.Success)
+                {
+                    await Application.Current.MainPage.DisplayAlert("Başarılı", "Teslimat tamamlandı!", "Tamam");
+                }
+                else
+                {
+                    await Application.Current.MainPage.DisplayAlert("Hata", completeResult.Message, "Tamam");
+                }
+            }
+            IsLoading = false;
+        }
+        // YENİ: Alıcı için QR kod gösterme komutu
+        [RelayCommand]
+        private async Task ShowQRCodeAsync(Transaction transaction)
+        {
+            if (transaction == null || string.IsNullOrEmpty(transaction.DeliveryQRCodeId)) return;
+
+            // QR kod bilgisini veritabanından çekmemiz gerekiyor.
+            var qrCode = await _firebaseClient
+                .Child(Constants.DeliveryQRCodesCollection)
+                .Child(transaction.DeliveryQRCodeId)
+                .OnceSingleAsync<DeliveryQRCode>();
+
+            if (qrCode != null)
+            {
+                await Shell.Current.GoToAsync($"{nameof(QRCodeDisplayPage)}?qrCodeData={qrCode.QRCodeData}");
+            }
+            else
+            {
+                await Application.Current.MainPage.DisplayAlert("Hata", "Teslimat kodu bulunamadı.", "Tamam");
+            }
+        }
+
+        // YENİ: Satıcı için tarayıcıyı açma komutu
+        [RelayCommand]
+        private async Task ScanToDeliverAsync()
+        {
+            await Shell.Current.GoToAsync(nameof(QRScannerPage));
+        }
         public void Dispose()
         {
             _incomingOffersSubscription?.Dispose();

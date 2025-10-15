@@ -18,7 +18,9 @@ namespace KamPay
             Routing.RegisterRoute(nameof(ChatPage), typeof(ChatPage));
             Routing.RegisterRoute(nameof(NotificationsPage), typeof(NotificationsPage));
             Routing.RegisterRoute(nameof(OffersPage), typeof(OffersPage));
-            Routing.RegisterRoute(nameof(TradeOfferView), typeof(TradeOfferView));
+           Routing.RegisterRoute(nameof(TradeOfferView), typeof(TradeOfferView));
+            Routing.RegisterRoute(nameof(QRCodeDisplayPage), typeof(QRCodeDisplayPage));
+            Routing.RegisterRoute(nameof(QRScannerPage), typeof(QRScannerPage));
         }
     }
 }

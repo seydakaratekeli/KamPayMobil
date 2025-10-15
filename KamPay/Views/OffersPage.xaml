@@ -48,24 +48,23 @@
         </Grid>
 
         <ActivityIndicator Grid.Row="1" IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" VerticalOptions="Center" HorizontalOptions="Center"/>
-
         <CollectionView Grid.Row="1" ItemsSource="{Binding IncomingOffers}" IsVisible="{Binding IsIncomingSelected}">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Transaction">
                     <Frame Margin="15,5" Padding="15" BorderColor="{StaticResource Gray300}">
                         <VerticalStackLayout Spacing="8">
-                            <Label FontAttributes="Bold" Text="{Binding ProductTitle, StringFormat='Talep Edilen Ürün: {0}'}"/>
-                            <Label Text="{Binding BuyerName, StringFormat='Teklif Eden: {0}'}"/>
-                            <Label Text="{Binding OfferMessage, StringFormat='Mesaj: {0}'}" IsVisible="{Binding OfferMessage, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-                            <Label Text="{Binding OfferedProductTitle, StringFormat='Teklif Edilen Ürün: {0}'}" IsVisible="{Binding OfferedProductTitle, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-
                             <HorizontalStackLayout Spacing="10" IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Pending}}">
                                 <Button Text="Onayla" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OffersViewModel}}, Path=AcceptOfferCommand}" CommandParameter="{Binding .}" BackgroundColor="{StaticResource Primary}"/>
                                 <Button Text="Reddet" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OffersViewModel}}, Path=RejectOfferCommand}" CommandParameter="{Binding .}" BackgroundColor="{StaticResource Danger}"/>
                             </HorizontalStackLayout>
 
-                            <Label Text="KABUL EDİLDİ" TextColor="{StaticResource Primary}" FontAttributes="Bold" IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Accepted}}"/>
+                            <VerticalStackLayout Spacing="10" IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Accepted}}">
+                                <Label Text="KABUL EDİLDİ - TESLİMAT BEKLENİYOR" TextColor="{StaticResource Primary}" FontAttributes="Bold"/>
+                                <Button Text="Teslim Etmek için Tara" Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OffersViewModel}}, Path=ScanToDeliverCommand}" CommandParameter="{Binding .}" />
+                            </VerticalStackLayout>
+
                             <Label Text="REDDEDİLDİ" TextColor="{StaticResource Danger}" FontAttributes="Bold" IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Rejected}}"/>
+                            <Label Text="TAMAMLANDI" TextColor="Green" FontAttributes="Bold" IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Completed}}"/>
                         </VerticalStackLayout>
                     </Frame>
                 </DataTemplate>
@@ -80,6 +79,11 @@
                             <Label FontAttributes="Bold" Text="{Binding ProductTitle, StringFormat='İstenen Ürün: {0}'}"/>
                             <Label Text="{Binding SellerName, StringFormat='Satıcı: {0}'}"/>
                             <Label FontAttributes="Italic" Text="{Binding Status, StringFormat='Durum: {0}'}" />
+
+                            <Button Text="QR Kodu Göster" 
+                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OffersViewModel}}, Path=ShowQRCodeCommand}" 
+                            CommandParameter="{Binding .}"
+                            IsVisible="{Binding Status, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter={x:Static models:TransactionStatus.Accepted}}"/>
                         </VerticalStackLayout>
                     </Frame>
                 </DataTemplate>

@@ -1,26 +1,17 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using KamPay.Models;
 using KamPay.Services;
 using KamPay.Views;
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
-
-using CommunityToolkit.Maui.Core; 
+using CommunityToolkit.Maui.Core;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace KamPay.ViewModels
 {
-    public class ShowTradeOfferPopupMessage
-    {
-        public Product TargetProduct { get; }
-        public ShowTradeOfferPopupMessage(Product targetProduct)
-        {
-            TargetProduct = targetProduct;
-        }
-    }
-    [QueryProperty(nameof(ProductId), "productId")]
+     [QueryProperty(nameof(ProductId), "productId")]
     public partial class ProductDetailViewModel : ObservableObject
     {
         // Gerekli tüm servisleri tanýmlýyoruz
@@ -29,6 +20,7 @@ namespace KamPay.ViewModels
         private readonly IFavoriteService _favoriteService;
         private readonly IMessagingService _messagingService;
         private readonly ITransactionService _transactionService;
+        private readonly IPopupService _popupService;
 
         [ObservableProperty]
         private string productId;
@@ -58,13 +50,15 @@ namespace KamPay.ViewModels
             IAuthenticationService authService,
             IFavoriteService favoriteService,
             IMessagingService messagingService,
-            ITransactionService transactionService)
+            ITransactionService transactionService,
+            IPopupService popupService)
         {
             _productService = productService;
             _authService = authService;
             _favoriteService = favoriteService;
             _messagingService = messagingService;
             _transactionService = transactionService;
+            _popupService = popupService;
         }
 
         partial void OnProductIdChanged(string value)
@@ -173,8 +167,14 @@ namespace KamPay.ViewModels
                 switch (Product.Type)
                 {
                     case ProductType.Takas:
-                        
-                        WeakReferenceMessenger.Default.Send(new ShowTradeOfferPopupMessage(Product));
+                        // ESKÝ WeakReferenceMessenger KODUNU DEÐÝÞTÝR
+                        // Pop-up'ý ViewModel üzerinden gösteriyoruz.
+                        // `onPresenting` callback'i ile pop-up açýlmadan hemen önce
+                        // onun ViewModel'ine veri aktarabiliyoruz.
+                        await _popupService.ShowPopupAsync<TradeOfferViewModel>(onPresenting: vm =>
+                        {
+                            vm.ProductId = this.ProductId;
+                        });
                         break;
 
                     case ProductType.Satis:

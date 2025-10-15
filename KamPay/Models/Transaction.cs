@@ -27,6 +27,7 @@ namespace KamPay.Models
 
         // Takas'a özel alanlar
         public string? OfferedProductId { get; set; } // Takas için teklif edilen ürünün ID'si
+        public string? DeliveryQRCodeId { get; set; }
         public string? OfferedProductTitle { get; set; }
         public string? OfferMessage { get; set; } // Teklifle birlikte gönderilen mesaj
     }

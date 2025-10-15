@@ -15,12 +15,14 @@ namespace KamPay.Services
         private readonly FirebaseClient _firebaseClient;
         private readonly INotificationService _notificationService; 
         private readonly IProductService _productService;
+        private readonly IQRCodeService _qrCodeService;
 
-        public FirebaseTransactionService(INotificationService notificationService, IProductService productService)
+        public FirebaseTransactionService(INotificationService notificationService, IProductService productService, IQRCodeService qrCodeService)
         {
             _firebaseClient = new FirebaseClient(Constants.FirebaseRealtimeDbUrl);
             _notificationService = notificationService;
             _productService = productService;
+            _qrCodeService = qrCodeService;
         }
 
         public async Task<ServiceResult<Transaction>> CreateRequestAsync(Product product, User buyer)
@@ -187,18 +189,43 @@ namespace KamPay.Services
                     ActionUrl = nameof(Views.OffersPage)
                 });
 
-                // Eðer teklif KABUL EDÝLDÝYSE...
+                // EÐER TEKLÝF KABUL EDÝLDÝYSE...
                 if (accept)
                 {
-                    // 1. Talep edilen ürünü rezerve et
+                    // 1. QR Kod oluþtur ve ID'sini transaction'a kaydet
+                    var qrResult = await _qrCodeService.GenerateDeliveryQRCodeAsync(transaction.ProductId, transaction.SellerId, transaction.BuyerId);
+                    if (qrResult.Success)
+                    {
+                        transaction.DeliveryQRCodeId = qrResult.Data.QRCodeId;
+                    }
+                    else
+                    {
+                        // QR kod oluþturulamazsa iþlemi geri alabilir veya hata dönebiliriz.
+                        return ServiceResult<Transaction>.FailureResult("Teslimat için QR kod oluþturulamadý.", qrResult.Message);
+                    }
+
+                    // 2. Talep edilen ürünü rezerve et
                     await _productService.MarkAsReservedAsync(transaction.ProductId, true);
 
-                    // 2. EÐER BU BÝR TAKAS ÝSE, teklif edilen ürünü de rezerve et
+                    // 3. EÐER BU BÝR TAKAS ÝSE, teklif edilen ürünü de rezerve et
                     if (transaction.Type == ProductType.Takas && !string.IsNullOrEmpty(transaction.OfferedProductId))
                     {
                         await _productService.MarkAsReservedAsync(transaction.OfferedProductId, true);
                     }
                 }
+
+                // Transaction'ý veritabanýnda güncelle (QR ID'si ile birlikte)
+                await transactionNode.PutAsync(transaction);
+
+                // Alýcýya bildirim gönder
+                await _notificationService.CreateNotificationAsync(new Notification
+                {
+                    UserId = transaction.BuyerId,
+                    Type = accept ? NotificationType.OfferAccepted : NotificationType.OfferRejected,
+                    Title = accept ? "Teklifin Kabul Edildi!" : "Teklifin Reddedildi",
+                    Message = $"'{transaction.SellerName}', '{transaction.ProductTitle}' ürünü için yaptýðýn teklifi {(accept ? "kabul etti." : "reddetti.")}",
+                    ActionUrl = nameof(Views.OffersPage)
+                });
 
                 return ServiceResult<Transaction>.SuccessResult(transaction, "Teklif yanýtlandý.");
             }
@@ -208,4 +235,4 @@ namespace KamPay.Services
             }
         }
     }
-    }
+}
